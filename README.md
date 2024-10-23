@@ -118,6 +118,16 @@ As mentioned before, the above Default Client Pattern will not work in our KFP(e
 ## 3. Running the Default Client Pattern from outside the cluster
 In this section we will outline the steps to run the Default Client Pattern. Code for this pattern is provided in this repo. We have 4 files besides the README. Two docker files (a) Dockerfile, and (b) Dockerfile.pipeline. Two python files mnist.py and mnist\_pipeline2.py. The first python file is the actual training workload that we run inside KFP. The mnist\_pipeline2.py is actually the trigger script that we run from our localhost from within a docker container. We assume Docker is installed in your localhost. We are run this demo on our MacOS. Let's begin.
 
-As mentioned before, we will follow the steps outlined in our earlier [work](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example)work. Follow steps 4 through 12 outlined there with minor changes. You will use the Dockerfile and provided here as opposed to Dockerfile in that repo. Similarly, you workload file will be mnist.py as opposed to the component_with_optional_inputs.py. 
+As mentioned before, we will follow the steps outlined in our earlier [work](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example). We will follow steps 4 through 12 outlined there with some minor exceptions. We will use the Dockerfile provided here as opposed to Dockerfile in that repo. Similarly, mnist.py provided in this repo will be our workload and will replace component_with_optional_inputs.py. Instead of creating a Job Manifest at step 13, we will create a docker image to run the trigger script locally and will run the created docker image in a docker container. The following two commands will accomplish this. Please note the --platform directive has been removed in the docker build command. It is because we are creating image that is compatible with my MacOS host. Also, we are leveraging the provided Dockerfile.pipeline file to create this image. This Dockerfile uses the mnist\_pipeline2.py. Please feel free to review the contents of this file. The content will resemble snippet show above in section 2.2.2.
 
-Now, you will create 
+```
+    bash> docker build -f Dockerfile.pipeline -t pipeline-test:1.0 .
+    bash> docker run --rm -it  --entrypoint /bin/bash pipeline-test:1.0
+```
+ 
+ The docker run command will open up the console inside the container as we are running in the interactive mode. you now issue the command as follows to trigger the pipeline.
+
+ ```
+    bash> python mnist\_pipeline2.py
+```
+You will notice the pipeline job starts running in your KFP. You can now monitor using the commands provided in step 15. You can now watch the monitor the job in UI from your local browser. 
