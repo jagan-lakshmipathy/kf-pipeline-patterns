@@ -4,7 +4,7 @@
 
 
 ## 1. Introduction
-In one of our earlier [work](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example), we demonstrated step-by-step on how to run a kubeflow pipeline [Kubeflow KFP](https://www.kubeflow.org/docs/components/pipelines/) (KFP). Please note the difference between the Kubeflow Pipeline (KFP) and Kubeflow Platform. Kubeflow Platform is the all encompassing kubeflow ecosystem and KFP is one of several Kubeflow sub-application within Kubeflow Platform. Like most Kubeflow sub-applications, KFP can be run as a standalone. In our earlier work, we ran the KFP as a standalone application. Here we will observe and document some KFP patterns and some working examples of these patterns. Some patterns are applicable only KFP and some are applicable only for Kubeflow Platform as the security aspects between KFP and Kubeflow Platform are different.We will highlight these differences here and will provide the working examples for KFP only. As in the earlier work, We will run these examples in Azure Kubernetes Service (AKS). For the sake of breivity we will not repeat all the steps outlined there. Instead we will highlight only the differences. For this reason we strongly recommend the readers to review the earlier work referenced above before proceeding with this repo. Let's get started.
+In one of our earlier [work](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example), we demonstrated step-by-step on how to run [Kubeflow Pipeline](https://www.kubeflow.org/docs/components/pipelines/) (KFP). Please note the difference between the Kubeflow Pipeline (KFP) and Kubeflow Platform. Kubeflow Platform is the all encompassing kubeflow ecosystem and KFP is one of several Kubeflow sub-application within Kubeflow Platform. Like most Kubeflow sub-applications, KFP can be run as a standalone or as a part of the ecosystem. From now on for clarity we will refer KFP(standalone) for the standalone KFP and KFP(embeded) for the KFP running with in the Kubeflow Ecosystem. For any pipline running with in the KFP as simply pipeline. Pipelines are made up of components and we refer to them as components. In our earlier work, we ran a simple pipeline in KFP(standalone). Here we will observe and document some KFP patterns and some working examples of these patterns. Some patterns are applicable only for KFP(standalone) and some are applicable only for KFP(embeded) as the security aspects between them are different. We will highlight these differences here and will provide the working examples. As in the earlier work, We will run these examples in Azure Kubernetes Service (AKS). For the sake of breivity we will not repeat all the steps outlined there. Instead we will highlight only the differences. For this reason we strongly recommend the readers to review the earlier work referenced above before proceeding with this repo. Let's get started.
 
 ## 2. Patterns
 We classify the patterns into two broad categories:
@@ -12,7 +12,7 @@ We classify the patterns into two broad categories:
 2. Running Pattern
 
 ### 2.1 Creaational Patterns
-These patterns are used to create Kubeflow Pipeline. These patterns can be further classified into 3 major categories: (1) Python Component, (2) Container Component, and (3) Importer Component. Let us discuss them in detail:
+These patterns are used to identify the type of the component that is used to build the pipeline. There are three type of components (1) Python Component, (2) Container Component, and (3) Importer Component. Let us discuss them in detail:
 
 #### 2.1.1 Python Components
 KFP Python Components can be further classified into (1) Lightweight Python Component, and (2) Containerized Python Components.
@@ -32,10 +32,10 @@ Container Components, unlike Python Components, enable component authors to set 
 What is a Importer Component?
 
 ### 2.2 Running Patterns
-We could run pipelines either from inside or from outside the cluster where the Kubeflow Platform or Kubeflow Pipeline (KFP) is ruuning. 
+We could trigger the pipeline either from inside or from outside the cluster where the KFP is ruuning. 
 
 ##### 2.2.1 Running from inside the Cluster
-First let's consider running the pipeline from inside the cluster. When running the pipeline from inside the cluster using the Kubeflow Platform or KFP we can leverage the kubernetes manifest as shown in [aks-kf-pipeline-example](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example). The working example provided in ask-kf-pipeline-example referenced here will serve as an example for the manifest pattern. We displayed that manifest here for your convenience.In this Job manifest, we create a Pod and run a container image called pipeline-example:latest that is located in the ACR. This image runs a trivial task. We created this image using the Dockerfile provided in the repo above. To run this image, the Kubeflow pipeline requires root authentication. See [here](https://www.kubeflow.org/docs/components/pipelines/concepts/pipeline-root/) to understand the concepts of pipeline root. This manifest below mounts ServiceAccount token volume that is used to authenticate with the Kubeflow Pipelines API. We have defined Job.spec.template.spec.volumes and  Job.spec.template.spec.containers.volumeMounts to project the serviceAccountToken as described [(here)](https://www.deploykf.org/user-guides/access-kubeflow-pipelines-api/).
+First let's consider triggering the pipeline from inside the cluster. We can trigger the pipeline from inside the cluster by leveraging the kubernetes manifest as shown in [aks-kf-pipeline-example](https://github.com/jagan-lakshmipathy/aks-kf-pipeline-example). This we call as the Manifest Pattern. We have displayed that manifest here for your convenience. In this Job manifest, we create a Pod and run a container image called pipeline-example:latest that is located in the ACR. This image runs a trivial task. We created this image using the Dockerfile provided in the repo above. To run this image, the Kubeflow pipeline requires root authentication. See [here](https://www.kubeflow.org/docs/components/pipelines/concepts/pipeline-root/) to understand the concepts of pipeline root. This manifest below mounts ServiceAccount token volume that is used to authenticate with the Kubeflow Pipelines API. We have defined Job.spec.template.spec.volumes and  Job.spec.template.spec.containers.volumeMounts to project the serviceAccountToken as described [(here)](https://www.deploykf.org/user-guides/access-kubeflow-pipelines-api/).
 
 ```
 apiVersion: batch/v1
@@ -81,7 +81,9 @@ spec:
   parallelism: 2
 ```
 
-This above manifest pattern can be used to run on both Kubernetes Platform or KFP. If you are running a KFP we can run the pipeline using the kfp.Client() as follows as the KFP backend and UI don't enforce any authentication. 
+This above manifest pattern can be used to run on both KFP(embeded) and KFP(standalone). 
+
+The following is the Client Pattern. This pattern leverages the default kfp.Client(). We specify the local UI service when creating the client. This pattern is will work only in the KFP(standalone) mode as the KFP backend and UI don't enforce any authentication. 
 ```
     compiler.Compiler().compile(
         pipeline_func=model_pipeline, package_path=__file__.replace('.py', '.yaml'))
@@ -92,10 +94,9 @@ This above manifest pattern can be used to run on both Kubernetes Platform or KF
 
     kfp_client.create_run_from_pipeline_package("./your-pipeline.yaml")
 ```
-The code utilizes the defalt kfp.Client() that references the Kubeflow Pipeline UI running within the cluster. This pattern we call as the Client Pattern.
 
 ##### 2.2.2 Running from outside the Cluster
-When running the pipeline from outside the cluster, again two approaches are possible one each for the Kubeflow platform and KFP. For KFP, we can leverage the following Client Pattern.T his approach is very similar to the Client Pattern discused in 2.2.1 with the exception that host url has to be provided as you are running this code from outside the cluster. we do the port forwarding of Kubeflow Pipeline UI using the kubeclt as follows:
+When running the pipeline from outside the cluster, again two approaches are possible one each for the Kubeflow platform and KFP. Both are a variant of the Client Pattern described above. The following example shows how to trigger the pipeline from outside in the KFP(standalone) mode. In this mode, the approach is similar to the above snippet with the exception that host url has to be provided as you are running this code from outside the cluster. The following pattern is what we call as the Default Client Pattern. we also need do the port forwarding of Kubeflow Pipeline UI using the kubeclt as follows as we will use the localhost to forward the requests. Please note the host name "host.docker.internal" in the snippet. This is how we refer the localhost from within the docker container in MacOs. We ran the following code from with in a docker container in our MacOS host. We used the Dockerfile.pipeline to create the docker image.:
 ```
 # change `--namespace` if you deployed Kubeflow Pipelines into a different namespace
 kubectl port-forward --namespace kubeflow svc/ml-pipeline-ui 3000:80
@@ -112,7 +113,7 @@ then create a kfp.Client() against the forwarded port of the Kubflow Pipeline Se
 
     kfp_client.create_run_from_pipeline_package("./mnist-pipeline2.yaml")
 ```
-For the Kubeflow Platform case, the code involves creating an authenticated kfp.Client() as described [here](https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/connect-api/). We refer to this as Authenticated Client Pattern. We didn't provide a working example for this as it requires a Kubefow Platform to run this
+When we trigger the Pipeline for the KFP(embedded) case, the above Default Client Pattern will not work. We need to create an authenticated kfp.Client() as described [here](https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/connect-api/). We refer to this as Authenticated Client Pattern. We didn't provide a working example for this as it requires a Kubefow Platform to run this
 
 ## Running the Client Pattern from outside the cluster
 We classify the patterns into two broad categories:
