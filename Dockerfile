@@ -9,8 +9,6 @@ RUN mkdir -p /opt/kfp_pipeline/
 
 WORKDIR /opt/kfp_pipeline/src
 ADD mnist.py /opt/kfp_pipeline/src/mnist.py
-ADD secret_as_env.py /opt/kfp_pipeline/src/secret_as_env.py
-ADD secret_as_vol.py /opt/kfp_pipeline/src/secret_as_vol.py
 
 
 RUN chgrp -R 0 /opt/kfp_pipeline \

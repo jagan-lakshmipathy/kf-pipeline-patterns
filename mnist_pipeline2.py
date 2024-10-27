@@ -14,7 +14,7 @@ _KFP_PACKAGE_PATH = os.getenv('KFP_PACKAGE_PATH')
 @dsl.container_component
 def model_train():
     #return dsl.ContainerSpec(image='registry.digitalocean.com/do-dev-jagan-06022024/kubeflow/pipeline-example:latest', 
-    return dsl.ContainerSpec(image='jaganacr10212024.azurecr.io/kubeflow/pipeline-example:latest', 
+    return dsl.ContainerSpec(image='jaganacr10272024.azurecr.io/kubeflow/pipeline-example:latest', 
                              command=['/bin/sh'], args=['-c' ,' python mnist.py --epochs 2 --no-cuda --save-model'])
 
 
